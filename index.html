@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>选人游戏计分器</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px }
+        table {
+            border-collapse: collapse;
+            margin: 20px 0;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f8f8;
+        }
+        input[type="text"] {
+            width: 120px;
+            padding: 4px;
+        }
+        select {
+            padding: 4px;
+            min-width: 80px;
+        }
+        .controls {
+            margin: 10px 0;
+        }
+        button {
+            padding: 6px 12px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        .win { background: #ffd700 }
+        .draw { background: #fff5bd }
+        .lose { background: #ffffff }
+        .id-displayer {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            border-radius: 50%;
+            /*background: #1976d2;*/
+            color: #fff;
+            text-align: center;
+            font-weight: bold;
+            margin-left: 2px;
+            margin-right: 2px;
+        }
+        .word-displayer {
+            display: inline-block;
+            height: 24px;
+            line-height: 24px;
+            border-radius: 12px;
+            background: #1976d2;
+            color: #fff;
+            text-align: center;
+            font-weight: bold;
+            margin-left: 2px;
+            margin-right: 2px;
+            padding: 0 10px;
+        }
+        .mvp-badge {
+            display: inline-block;
+            height: 24px;
+            line-height: 24px;
+            border-radius: 12px;
+            background: #000;
+            color: #fff;
+            text-align: center;
+            font-weight: bold;
+            margin-left: 2px;
+            margin-right: 2px;
+            padding: 0 10px;
+        }
+        #results table {
+            width: auto;
+            margin-top: 20px;
+        }
+        /* tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        } */
+        tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+        .word-setting {
+            padding: 4px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>选人游戏计分器</h2>
+    <div class="controls">
+        <button onclick="addPlayer()">➕ 添加玩家</button>
+        <button onclick="calculateScores()">🧮 计算得分</button>
+        <button onclick="resetGame()">🔄 重置</button>
+        <button onclick="outputGameStateJSON()">📜 输出游戏状态</button>
+        <button onclick="readGameStateJSON()">📥 读取游戏状态</button>
+        <button onclick="showRules()">📖 查看规则</button>
+    </div>
+
+    <div>
+        <h3>设置队伍词语</h3>
+        <div class="controls">
+            <label for="wordA">队伍 A 词语：</label><input type="text" class="word-setting" id="wordA" placeholder="例:孤注一掷" onchange="updateWord('A', this.value)" />
+            <label for="wordB">队伍 B 词语：</label><input type="text" class="word-setting" id="wordB" placeholder="例:背水一战" onchange="updateWord('B', this.value)" />
+            <label for="wordC">队伍 C 词语：</label><input type="text" class="word-setting" id="wordC" placeholder="例:破釜沉舟" onchange="updateWord('C', this.value)" />
+        <div>
+    </div>
+
+    <div>
+        <h3>配置玩家信息</h3>
+        <p>双击玩家昵称可以编辑玩家昵称。其余字段可直接编辑。</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>玩家</th>
+                    <th>角色</th>
+                    <th>队伍</th>
+                    <th>得知词语</th>
+                    <th>指认队友</th>
+                    <th>指认白板</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="players-body"></tbody>
+        </table>
+    </div>
+
+    <div id="results"></div>
+
+<footer>
+    <p>
+        由 <a href="https://github.com/leigames">M0n0</a> 制作，
+        根据 <a href="https://www.gnu.org/licenses/gpl-3.0.en.html">GPL3.0</a> 协议开源。
+    </p>
+</footer>
+
+<script src="./main.js"></script>
+<script>
+    function showRules() {
+        fetch('./README.md')
+            .then(response => response.text())
+            .then(content => {
+                const rulesWindow = window.open('', '_blank', 'width=800,height=600');
+                rulesWindow.document.write('<pre style="white-space: pre-wrap; font-family: Arial, sans-serif; padding: 20px;">' + content + '</pre>');
+                rulesWindow.document.title = '游戏规则';
+            })
+            .catch(error => alert('无法加载规则文件: ' + error));
+    }
+</script>
+</body>
+</html>
