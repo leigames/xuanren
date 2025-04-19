@@ -149,7 +149,9 @@
                 rulesWindow.document.write('<pre style="white-space: pre-wrap; font-family: Arial, sans-serif; padding: 20px;">' + content + '</pre>');
                 rulesWindow.document.title = '游戏规则';
             })
-            .catch(error => alert('无法加载规则文件: ' + error));
+            .catch(error => {
+                window.open('https://github.com/leigames/xuanren/blob/main/README.md', '_blank');
+            });
     }
 </script>
 </body>
