@@ -150,6 +150,7 @@
                 rulesWindow.document.title = '游戏规则';
             })
             .catch(error => {
+                alert('无法在当前页面游戏规则，请访问 GitHub 查看：https://github.com/leigames/xuanren/blob/main/README.md' + '\n' + error);
                 window.open('https://github.com/leigames/xuanren/blob/main/README.md', '_blank');
             });
     }
