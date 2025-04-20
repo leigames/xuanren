@@ -65,7 +65,7 @@ function removePlayer(id) {
 
 // 重置游戏
 function resetGame() {
-    players = defaultPlayers;
+    players = JSON.parse(JSON.stringify(defaultPlayers)); // 深拷贝
     words = {
         'A': '',
         'B': '',
@@ -639,7 +639,8 @@ function initGameState() {
         words = gameState.words;
         players = gameState.players;
     } else {
-        players = defaultPlayers;
+        // 深拷贝
+        players = JSON.parse(JSON.stringify(defaultPlayers));
     }
     renderPlayers();
 }
