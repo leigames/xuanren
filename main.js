@@ -115,7 +115,8 @@ function renderPlayers() {
                     placeholder="例:2,3" 
                     value="${player.claims.join(',')}"
                     ${['白板'].includes(player.role) ? 'style="display: none"' : ''}
-                    onchange="updateClaims(${player.id}, this.value, 'claims')">
+                    onchange="updateClaims(${player.id}, this.value, 'claims')"
+                    onkeydown="if (event.key === 'Enter') this.blur()">
             </td>
             <td>
                 <input type="text" 
@@ -123,7 +124,8 @@ function renderPlayers() {
                     value="${player.whiteClaims.join(',')}"
                     ${player.role === '旅行者' ? 'disabled' : ''}
                     ${['白板','旅行者'].includes(player.role) ? 'style="display: none"' : ''}
-                    onchange="updateClaims(${player.id}, this.value, 'whiteClaims')">
+                    onchange="updateClaims(${player.id}, this.value, 'whiteClaims')"
+                    onkeydown="if (event.key === 'Enter') this.blur()">
             </td>
             <td>
                 <button onclick="removePlayer(${player.id})">❌ 删除</button>
@@ -269,7 +271,8 @@ function updateClaims(id, value, field) {
     
     player[field] = [...new Set(value.split(/[,，、\ ]/))]
         .map(item => parseInt(item, 10))
-        .filter(n => !isNaN(n) && Number.isInteger(n) && n > 0);
+        .filter(n => !isNaN(n) && Number.isInteger(n) && n > 0)
+        .filter(n => n <= players.length);
     
     renderPlayers();
 }
@@ -575,7 +578,7 @@ function displayResults(scores, teamScores, whiteboardClaims) {
             <td>${s.role}</td>
             <td>${renderPlayerWord(s)}</td>
             <td>${claimsStr ? claimsStr : '-'}</td>
-            <td>${whiteClaimsStr ? whiteClaimsStr : '-'}</td>
+            ${hasWhiteboard ? `<td>${whiteClaimsStr ? whiteClaimsStr : '-'}</td>` : ''}
             <td>${s.correctClaims === undefined ? '-' : `${s.correctClaims}`}</td>
             <td>${s.receivedWrongClaims === undefined ? '-' : `${s.receivedWrongClaims}`}</td>
             <td>${s.role === '白板' ? isRevealed : isClaimedByTeammates}</td>
