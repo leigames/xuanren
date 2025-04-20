@@ -312,9 +312,10 @@ function calculateScores() {
         team: p.team,
         claims: p.claims,
         whiteClaims: p.whiteClaims,
-        correctClaims: 0,
-        receivedWrongClaims: 0,
-        receivedTeammateClaims: 0,
+        correctClaims: undefined,
+        receivedWrongClaims: undefined,
+        receivedTeammateClaims: undefined,
+        isRevealed: undefined,
         score: undefined,
         teamScore: undefined,
         result: ''
@@ -339,6 +340,7 @@ function calculateScores() {
                 .filter(p => p.role === '常规' || p.role === '内奸')
                 .filter(p => p.claims.includes(player.id))
                 .filter(p => !actualTeammates.some(t => t.id === p.id))
+                .filter(p => p.id !== player.id)
                 .length;
             
             // 是否被队友指认
@@ -353,6 +355,8 @@ function calculateScores() {
         // 处理白板
         if (player.role === '白板') {
             scoreObj.result = judgeWhiteboard(player.id, whiteboardClaims);
+            scoreObj.receivedWrongClaims = whiteboardClaims[player.id]?.teammateClaims || 0;
+            scoreObj.isRevealed = whiteboardClaims[player.id]?.isRevealed || false;
         }
         
         // 处理旅行者
@@ -475,7 +479,7 @@ function analyzeWhiteboard() {
     }
 
     // 返回前k名，但如果这些并列名次的最后一名超过k，则所有并列名次都被去掉
-    let lastRank = kthCount;
+    let lastRank = sortedWhiteboardClaims.filter(item => item.count >= kthCount).length;
     if (indicesOfKthTies.length > 0 && indicesOfKthTies[indicesOfKthTies.length - 1] >= whiteboardCount) {
         // 如果这些并列名次的最后一名超过k，则所有并列名次都被去掉
         lastRank -= indicesOfKthTies.length;
@@ -500,12 +504,19 @@ function analyzeWhiteboard() {
 // 计算白板结果
 function judgeWhiteboard(id, claims) {
     const data = claims[id];
-    if (!data) return '负';
+    let result = '平';
+    if (!data) result = '负';
     
-    if (data.teammateClaims >= 2) return '胜';
-    if (data.teammateClaims === 1 && !data.isRevealed) return '胜';
-    if (data.teammateClaims === 1) return '平';
-    return '负';
+    if (data.teammateClaims >= 2) {
+        result = '胜';
+    } else if (data.teammateClaims === 1 && !data.isRevealed) {
+        result = '胜';
+    } else if (data.teammateClaims === 1) {
+        result = '平';
+    } else {
+        result = '负';
+    }
+    return result;
 }
 
 // 计算旅行者结果
@@ -526,15 +537,16 @@ function displayResults(scores, teamScores, whiteboardClaims) {
     
     // 玩家得分表
     const hasWhiteboard = players.some(p => p.role === '白板');
-    const winningTeam = teamScores.find(t => t.result === '胜');
+    const winningTeams = teamScores.filter(t => t.result === '胜').map(t => t.team);
     let mvp = [];
 
-    if (winningTeam) {
-        const winningPlayers = scores.filter(s => s.team === winningTeam.team);
+    if (winningTeams !== undefined && winningTeams.length > 0) {
+        // 计算 MVP
+        const winningPlayers = scores.filter(s => winningTeams.includes(s.team));
         const maxScore = Math.max(...winningPlayers.map(p => p.score));
         const mvpCandidates = winningPlayers.filter(p => p.score === maxScore);
         const maxClaimedByTeammateInMvpCandidates = Math.max(...mvpCandidates.map(p => p.receivedTeammateClaims));
-        mvp = mvpCandidates.filter(p => p.receivedTeammateClaims === maxClaimedByTeammateInMvpCandidates)
+        mvp = mvpCandidates.filter(p => p.receivedTeammateClaims === maxClaimedByTeammateInMvpCandidates);
     }
 
     html += `<table>
@@ -553,15 +565,20 @@ function displayResults(scores, teamScores, whiteboardClaims) {
         </tr>`;
     
     scores.forEach(s => {
+        const claimsStr = s.claims.map(c => playerIdWrapper(scores.find(s => s.id === c))).join('');
+        const whiteClaimsStr = hasWhiteboard ? s.whiteClaims.map(c => playerIdWrapper(scores.find(s => s.id === c))).join('') : '';
+        const isClaimedByTeammates = s.receivedTeammateClaims === undefined ? '-' : s.receivedTeammateClaims > 0 ? '是' : '否';
+        const isRevealed = s.isRevealed === undefined ? '-' : s.isRevealed ? '被揭露' : '未被揭露';
+
         html += `<tr style="background: ${teamColorsLight[s.team] || teamColorsLight[s.role]}">
             <td>${playerDisplayWrapper(s)}</td>
             <td>${s.role}</td>
             <td>${renderPlayerWord(s)}</td>
-            <td>${s.claims.map(c => playerIdWrapper(scores.find(s => s.id === c))).join('')}</td>
-            ${hasWhiteboard ? `<td>${s.whiteClaims.map(c => playerIdWrapper(scores.find(s => s.id === c))).join('')}</td>` : ''}
-            <td>${s.correctClaims}</td>
-            <td>${s.receivedWrongClaims}</td>
-            <td>${(s.receivedTeammateClaims > 0) ? '是' : '否'}</td>
+            <td>${claimsStr ? claimsStr : '-'}</td>
+            <td>${whiteClaimsStr ? whiteClaimsStr : '-'}</td>
+            <td>${s.correctClaims === undefined ? '-' : `${s.correctClaims}`}</td>
+            <td>${s.receivedWrongClaims === undefined ? '-' : `${s.receivedWrongClaims}`}</td>
+            <td>${s.role === '白板' ? isRevealed : isClaimedByTeammates}</td>
             <td>${s.score === undefined ? '-' : s.score}</td>
             <td>${s.teamScore === undefined ? '-' : s.teamScore}</td>
             <td class="${s.result === '胜' ? 'win' : s.result === '平' ? 'draw' : 'lose'}">
