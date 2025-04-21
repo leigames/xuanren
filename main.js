@@ -577,16 +577,25 @@ function displayResults(scores, teamScores, whiteboardClaims) {
     
     // 玩家得分表
     const hasWhiteboard = players.some(p => p.role === '白板');
-    const winningTeams = teamScores.filter(t => t.result === '胜').map(t => t.team);
-    let mvp = [];
+    const teams = analyzeTeams();
+    const teamNames = Object.keys(teams);
+    const winningTeamNames = teamNames.filter(team => teamScores.some(t => t.team === team && t.result === '胜'));
+    let mvps = [], svps = [];
 
-    if (winningTeams !== undefined && winningTeams.length > 0) {
-        // 计算 MVP
-        const winningPlayers = scores.filter(s => winningTeams.includes(s.team));
-        const maxScore = Math.max(...winningPlayers.map(p => p.score));
-        const mvpCandidates = winningPlayers.filter(p => p.score === maxScore);
-        const maxClaimedByTeammateInMvpCandidates = Math.max(...mvpCandidates.map(p => p.receivedTeammateClaims));
-        mvp = mvpCandidates.filter(p => p.receivedTeammateClaims === maxClaimedByTeammateInMvpCandidates);
+    for (const team of teamNames) {
+        // 计算 MVP 或 SVP
+        const teamPlayers = teams[team];
+        const maxScore = Math.max(...teamPlayers.map(p => scores.find(s => s.id === p.id).score));
+        const mvpCandidates = teamPlayers.filter(p => scores.find(s => s.id === p.id).score === maxScore);
+        const maxClaimedByTeammateInMvpCandidates = Math.max(...mvpCandidates.map(p => scores.find(s => s.id === p.id).receivedTeammateClaims));
+        // 胜组为 mvp，平组或败组为 svp
+        if (winningTeamNames.includes(team)) {
+            const mvp = mvpCandidates.filter(p => scores.find(s => s.id === p.id).receivedTeammateClaims === maxClaimedByTeammateInMvpCandidates);
+            mvps = mvps.concat(mvp);
+        } else {
+            const svp = mvpCandidates.filter(p => scores.find(s => s.id === p.id).receivedTeammateClaims === maxClaimedByTeammateInMvpCandidates);
+            svps = svps.concat(svp);
+        }
     }
 
     html += `<table>
@@ -628,7 +637,8 @@ function displayResults(scores, teamScores, whiteboardClaims) {
             <td>${s.score === undefined ? '-' : s.score}</td>
             <td>${s.teamScore === undefined ? '-' : s.teamScore}</td>
             <td class="${s.result === '胜' ? 'win' : s.result === '平' ? 'draw' : 'lose'}">
-            ${s.result} ${mvp.some(m => m.id === s.id) ? '<span class="mvp-badge">🎉 MVP</span>' : ''}
+            ${s.result} ${mvps.some(mvp => mvp.id === s.id) ? '<span class="mvp-badge">👑 MVP</span>' : 
+                svps.some(svp => svp.id === s.id) ? '<span class="mvp-badge">🎉 SVP</span>' : ''}
             </td>
         </tr>`;
     });
