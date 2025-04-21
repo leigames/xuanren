@@ -89,7 +89,13 @@
             padding: 4px;
             margin-right: 10px;
         }
+        u {
+            text-decoration: none;
+            color: #007bff;
+            cursor: pointer;
+        }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <h2>选人游戏计分器</h2>
@@ -97,8 +103,9 @@
         <button onclick="addPlayer()">➕ 添加玩家</button>
         <button onclick="calculateScores()">🧮 计算得分</button>
         <button onclick="resetGame()">🔄 重置</button>
-        <button onclick="outputGameStateJSON()">📜 输出游戏状态</button>
-        <button onclick="readGameStateJSON()">📥 读取游戏状态</button>
+        <button onclick="outputGameStateJSON()">📜 导出游戏状态</button>
+        <button onclick="readGameStateJSON()">📥 读入游戏状态</button>
+        <button onclick="readPlayerSpeech()">💬 读入玩家发言</button>
         <button onclick="showRules()">📖 查看规则</button>
     </div>
 
@@ -113,7 +120,7 @@
 
     <div>
         <h3>配置玩家信息</h3>
-        <p>双击玩家昵称可以编辑玩家昵称。其余字段可直接编辑。</p>
+        <p>双击玩家昵称可以编辑玩家昵称，发言内容请通过 <u onclick="readPlayerSpeech()">读入玩家发言</u> 读入。其余字段可直接编辑。</p>
         <table>
             <thead>
                 <tr>
@@ -121,6 +128,7 @@
                     <th>角色</th>
                     <th>队伍</th>
                     <th>得知词语</th>
+                    <th>发言内容</th>
                     <th>指认队友</th>
                     <th>指认白板</th>
                     <th>操作</th>
@@ -134,8 +142,7 @@
 
 <footer>
     <p>
-        由 <a href="https://github.com/leigames">M0n0</a> 制作，
-        根据 <a href="https://www.gnu.org/licenses/gpl-3.0.en.html">GPL3.0</a> 协议开源。
+        由 <a href="https://github.com/leigames">M0n0</a> 制作，根据 <a href="https://www.gnu.org/licenses/gpl-3.0.en.html">GPL3.0</a> 协议开源。
     </p>
 </footer>
 
