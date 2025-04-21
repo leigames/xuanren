@@ -1,10 +1,10 @@
 const defaultPlayers = [
-    {"id":1,"name":"未命名","role":"常规","team":"A","claims":[],"whiteClaims":[]},
-    {"id":2,"name":"未命名","role":"常规","team":"A","claims":[],"whiteClaims":[]},
-    {"id":3,"name":"未命名","role":"常规","team":"A","claims":[],"whiteClaims":[]},
-    {"id":4,"name":"未命名","role":"常规","team":"B","claims":[],"whiteClaims":[]},
-    {"id":5,"name":"未命名","role":"常规","team":"B","claims":[],"whiteClaims":[]},
-    {"id":6,"name":"未命名","role":"常规","team":"B","claims":[],"whiteClaims":[]}
+    {"id":1,"name":"未命名","role":"常规","team":"A","claims":[],"whiteClaims":[],"speech":[]},
+    {"id":2,"name":"未命名","role":"常规","team":"A","claims":[],"whiteClaims":[],"speech":[]},
+    {"id":3,"name":"未命名","role":"常规","team":"A","claims":[],"whiteClaims":[],"speech":[]},
+    {"id":4,"name":"未命名","role":"常规","team":"B","claims":[],"whiteClaims":[],"speech":[]},
+    {"id":5,"name":"未命名","role":"常规","team":"B","claims":[],"whiteClaims":[],"speech":[]},
+    {"id":6,"name":"未命名","role":"常规","team":"B","claims":[],"whiteClaims":[],"speech":[]}
 ];
 
 const teamColors = {
@@ -46,6 +46,7 @@ function addPlayer() {
         name: '未命名',
         role: '常规',
         team: 'A',
+        speech: [],
         claims: [],
         whiteClaims: []
     };
@@ -83,6 +84,13 @@ function renderPlayers() {
         // calculateScores();
     }
 
+    // 考虑兼容性，如果 players 没有 speech 字段，则添加之
+    players.forEach(player => {
+        if (!player.speech) {
+            player.speech = [];
+        }
+    });
+
     renderDictionary();
 
     const tbody = document.getElementById('players-body');
@@ -109,6 +117,11 @@ function renderPlayers() {
             </td>
             <td>
                 ${renderPlayerWord(player)}
+            </td>
+            <td>
+                ${player.speech.map(s => `<div style="font-size: small">
+                    <u onclick="readPlayerSpeech()">[${s.order}] ${s.content}</u>
+                </div>`).join('')}
             </td>
             <td>
                 <input type="text" 
@@ -253,12 +266,18 @@ function updatePlayer(id, field, value) {
     
     if (['白板','旅行者'].includes(player.role)) {
         player.team += '0'; // 旅行者和白板不属于任何队伍，该操作用来记录原来的队伍，方便之后恢复
+        player.claims = [];
+        player.whiteClaims = [];
     }
 
     // 如果一个白板和旅行者变成了常规玩家或内奸，恢复原来的队伍
     if (['常规','内奸'].includes(value)) {
         const originalTeam = player.team.slice(0, 1);
-        player.team = originalTeam;
+        if (['A','B','C'].includes(originalTeam)) {
+            player.team = originalTeam;
+        } else {
+            player.team = 'A';
+        }
     }
     
     renderPlayers();
@@ -305,7 +324,9 @@ function analyzeTeams() {
 // 计算得分
 function calculateScores() {
     const teams = analyzeTeams();
-    const whiteboardClaims = analyzeWhiteboard();
+    const whiteboardResults = analyzeWhiteboard();
+    const whiteboardClaims = whiteboardResults[0];
+    const playerCorrectWhiteboardClaims = whiteboardResults[1];
     
     const scores = players.map(p => ({
         id: p.id,
@@ -313,9 +334,11 @@ function calculateScores() {
         // word: p.word,
         role: p.role,
         team: p.team,
+        speech: p.speech,
         claims: p.claims,
         whiteClaims: p.whiteClaims,
         correctClaims: undefined,
+        correctWhiteboardClaims: undefined,
         receivedWrongClaims: undefined,
         receivedTeammateClaims: undefined,
         isRevealed: undefined,
@@ -349,9 +372,12 @@ function calculateScores() {
             // 是否被队友指认
             scoreObj.receivedTeammateClaims = actualTeammates.filter(t => t.claims.includes(player.id)).length;
 
+            // 指认白板的情况
+            scoreObj.correctWhiteboardClaims = playerCorrectWhiteboardClaims[player.id] || 0;
+
             // 计算得分
             scoreObj.score = (scoreObj.receivedTeammateClaims > 0)
-                   ? scoreObj.correctClaims + scoreObj.receivedWrongClaims 
+                   ? scoreObj.correctClaims + scoreObj.receivedWrongClaims + scoreObj.correctWhiteboardClaims
                    : 0;
         }
         
@@ -453,14 +479,25 @@ function analyzeWhiteboard() {
     const whiteboardCount = players.filter(p => p.role === '白板').length;
     const playerClaimsAboutWhiteboard = {};
 
-    // 统计每个玩家被指认为白板的次数
+    // 记录每个玩家指认白板正确的数量
+    const playerCorrectWhiteboardClaims = {};
+    
     players.forEach(p => {
         if (p.role !== '旅行者' && p.role !== '白板') {
             p.whiteClaims.forEach(id => {
+                // 统计每个玩家被指认为白板的次数
                 if (!playerClaimsAboutWhiteboard[id]) {
                     playerClaimsAboutWhiteboard[id] = 0;
                 }
                 playerClaimsAboutWhiteboard[id]++;
+
+                // 统计每个玩家指认白板正确的数量
+                if (!playerCorrectWhiteboardClaims[p.id]) {
+                    playerCorrectWhiteboardClaims[p.id] = 0;
+                }
+                if (players.some(w => w.id === id && w.role === '白板')) {
+                    playerCorrectWhiteboardClaims[p.id]++;
+                }
             });
         }
     });
@@ -501,7 +538,7 @@ function analyzeWhiteboard() {
             isRevealed: sortedWhiteboardClaims.some(item => item.id === wp.id)
         };
     });
-    return claims;
+    return [claims, playerCorrectWhiteboardClaims];
 }
 
 // 计算白板结果
@@ -557,9 +594,11 @@ function displayResults(scores, teamScores, whiteboardClaims) {
             <th>玩家</th>
             <th>角色</th>
             <th>得知词语</th>
+            <th>发言内容</th>
             <th>指认队友</th>
             ${hasWhiteboard ? '<th>指认白板</th>' : ''}
-            <th>指认得分</th>
+            <th>指认队友得分</th>
+            ${hasWhiteboard ? '<th>指认白板得分</th>' : ''}
             <th>欺骗得分</th>
             <th>被队友指认</th>
             <th>得分</th>
@@ -577,9 +616,13 @@ function displayResults(scores, teamScores, whiteboardClaims) {
             <td>${playerDisplayWrapper(s)}</td>
             <td>${s.role}</td>
             <td>${renderPlayerWord(s)}</td>
+            <td>${s.speech.map(s => `<div style="font-size: small">
+                <span>[${s.order}] ${s.content}</span>
+            </div>`).join('')}</td>
             <td>${claimsStr ? claimsStr : '-'}</td>
             ${hasWhiteboard ? `<td>${whiteClaimsStr ? whiteClaimsStr : '-'}</td>` : ''}
             <td>${s.correctClaims === undefined ? '-' : `${s.correctClaims}`}</td>
+            ${hasWhiteboard ? `<td>${s.correctWhiteboardClaims === undefined ? '-' : `${s.correctWhiteboardClaims}`}</td>` : ''}
             <td>${s.receivedWrongClaims === undefined ? '-' : `${s.receivedWrongClaims}`}</td>
             <td>${s.role === '白板' ? isRevealed : isClaimedByTeammates}</td>
             <td>${s.score === undefined ? '-' : s.score}</td>
@@ -630,6 +673,105 @@ function readGameStateJSON() {
     } catch (e) {
         alert("无效的 JSON 字符串");
     }
+}
+
+function showDialog(title, placeholder, dialogId, onConfirm) {
+    const dialog = document.createElement('div');
+    dialog.style.position = 'fixed';
+    dialog.style.top = '50%';
+    dialog.style.left = '50%';
+    dialog.style.transform = 'translate(-50%, -50%)';
+    dialog.style.backgroundColor = 'white';
+    dialog.style.padding = '20px';
+    dialog.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+    dialog.style.zIndex = '1000';
+
+    const titleElement = document.createElement('h3');
+    titleElement.textContent = title;
+    dialog.appendChild(titleElement);
+
+    const textarea = document.createElement('textarea');
+    textarea.rows = 10;
+    textarea.cols = 50;
+    textarea.placeholder = placeholder;
+    textarea.value = localStorage.getItem(dialogId) || '';
+    dialog.appendChild(textarea);
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.marginTop = '10px';
+    buttonContainer.style.textAlign = 'right';
+
+    const confirmButton = document.createElement('button');
+    confirmButton.textContent = '确定';
+    confirmButton.style.marginRight = '10px';
+    confirmButton.onclick = () => {
+        const input = textarea.value;
+        document.body.removeChild(dialog);
+        if (onConfirm) onConfirm(input);
+    };
+
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = '取消';
+    cancelButton.onclick = () => {
+        document.body.removeChild(dialog);
+    };
+
+    buttonContainer.appendChild(confirmButton);
+    buttonContainer.appendChild(cancelButton);
+    dialog.appendChild(buttonContainer);
+
+    document.body.appendChild(dialog);
+}
+
+function readPlayerSpeech() {
+    showDialog(
+        "输入玩家发言",
+        "请输入玩家发言（格式：X号 发言内容，每行一条，空行和#开头的行会被忽略）：",
+        "playerSpeechInput",
+        (speechInput) => {
+            if (!speechInput) return;
+
+            // 保存原始输入到 localStorage
+            localStorage.setItem('playerSpeechInput', speechInput);
+
+            const lines = speechInput.split('\n');
+            const speechMap = {};
+            let order = 0;
+
+            lines.forEach((line, index) => {
+                line = line.trim();
+                if (!line || line.startsWith('#')) return; // 忽略空行和注释行
+
+                const match = line.match(/^(\d+)[号:：]\s*(.+)$/);
+                if (!match) {
+                    alert(`第 ${index + 1} 行格式错误：${line}`);
+                    throw new Error(`Invalid format on line ${index + 1}: ${line}`);
+                }
+
+                const playerId = parseInt(match[1], 10);
+                if (isNaN(playerId) || playerId <= 0 || playerId > players.length) {
+                    alert(`第 ${index + 1} 行玩家 ID 无效：${match[1]}`);
+                    throw new Error(`Invalid player ID on line ${index + 1}: ${match[1]}`);
+                }
+
+                const speechContent = match[2].trim();
+
+                if (!speechMap[playerId]) {
+                    speechMap[playerId] = [];
+                }
+                order++;
+                const speechRound = parseInt((order - 1) / players.length) + 1;
+                const speechOrder = order % players.length === 0 ? players.length : order % players.length;
+                speechMap[playerId].push({ order: `${speechRound}-${speechOrder}`, content: speechContent });
+            });
+
+            players.forEach(player => {
+                player.speech = speechMap[player.id] || [];
+            });
+
+            renderPlayers();
+        }
+    );
 }
 
 function initGameState() {
